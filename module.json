@@ -9,7 +9,7 @@
     },
     "authors": [
         {
-            "name": "chasarooniZ"
+            "name": "asoulliard"
         }
     ],
     "relationships": {
@@ -102,5 +102,5 @@
     "url": "#{URL}#",
     "manifest": "#{MANIFEST}#",
     "download": "#{DOWNLOAD}#",
-    "readme": "https://github.com/chasarooniZ/pf2e-rpg-numbers/blob/master/README.md"
+    "readme": "https://github.com/asoulliard/pf2e-rpg-numbers/blob/master/README.md"
 }
