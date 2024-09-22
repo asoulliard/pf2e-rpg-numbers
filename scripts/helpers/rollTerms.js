@@ -14,8 +14,8 @@ export function getDamageList(rolls) {
 }
 
 export function extractDamageInfoCombined(rolls) {
-    return rolls.flatMap(inp => 
-        inp?.terms?.flatMap(term => 
+    return rolls.flatMap(inp =>
+        inp?.terms?.flatMap(term =>
             term?.rolls?.map(roll => ({
                 type: roll.type,
                 value: roll.total,
@@ -25,7 +25,7 @@ export function extractDamageInfoCombined(rolls) {
 }
 
 export function extractDamageInfoAll(rolls) {
-    return rolls.flatMap(inp => 
+    return rolls.flatMap(inp =>
         inp?.terms?.flatMap(term => extractTerm(term)) || []
     );
 }
@@ -49,6 +49,33 @@ export function extractTerm(term, flavor = "") {
     return result;
 }
 
+export function getIWR(attributes, dmgType) {
+    const iwrResults = {
+        immunity: false,
+        resistance: false,
+        weakness: false,
+    };
+    const check = (element) => element.type === dmgType;
+
+    iwrResults["immunity"] = attributes.immunities.some(check);
+    iwrResults["resistance"] = attributes.resistances.some(check);
+    iwrResults["weakness"] = attributes.weaknesses.some(check);
+
+    return iwrResults;
+}
+
+export function findIWRTrue(iwr) {
+    const iwrArray = [];
+
+    Object.entries(iwr).forEach(([key, value]) => {
+        if (iwr[key]) {
+            iwrArray.push(key);
+        }
+    });
+
+    return iwrArray;
+}
+
 const termProcessors = {
     "InstancePool": processInstancePool,
     "DamageInstance": processDamageInstance,
@@ -70,7 +97,7 @@ function processDamageInstance(term, result, flavor) {
     result = term.terms.flatMap(item => extractTerm(item, term.types || flavor));
     const keepPersistent = !!term.options.evaluatePersistent;
     return result.filter(res => (res?.type?.startsWith("persistent,") ? keepPersistent : true))
-                 .map(r => ({ value: r.value, type: r.type.replace(/persistent,/g, "") }));
+        .map(r => ({ value: r.value, type: r.type.replace(/persistent,/g, "") }));
 }
 
 function processArithmeticExpression(term, result, flavor) {

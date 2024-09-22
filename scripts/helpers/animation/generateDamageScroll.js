@@ -1,12 +1,13 @@
 import { getFontScale, findTypeWithLargestTotal, getVisibleAndMsgVisibleUsers } from "../anim.js";
 import { getSetting } from "../misc.js";
+import { getIWR } from "../rollTerms.js";
 
 /**
  * Generates damage scrolling text for a passed in list of damage values
  * @param {{type: string, value: string}[]} dmg_list list of type and value
  * @param {string[]} targets list of token ids
  */
-export async function generateDamageScroll(dmg_list, targets, msg) {
+export async function generateDamageScroll(dmg_list, isCrit, targets, msg) {
     const settings = {
         fontSize: getSetting("font-size"),
         jitter: getSetting("jitter"),
@@ -19,36 +20,40 @@ export async function generateDamageScroll(dmg_list, targets, msg) {
     };
 
     const colors = {
-        bludgeoning: "0x3c3c3c",
-        piercing: "0x3c3c3c",
-        slashing: "0x3c3c3c",
-        acid: "0x007300",
-        bleed: "0x99001a",
-        chaotic: "0xa600a6",
-        cold: "0x2f2fa6",
-        electricity: "darkgoldenrod",
-        evil: "indigo",
-        fire: "0xa62f00",
-        force: "0x6300aa",
-        good: "0x9d730a",
-        lawful: "0x402600",
-        mental: "midnightblue",
-        poison: "0x5b7332",
-        healing: "lightgreen",
-        sonic: "darkcyan",
-        spirit: "0x5a5585",
-        vitality: "0xffffe0",
-        void: "0x00001f",
+        bludgeoning: "black",
+        piercing: "black",
+        slashing: "black",
+        acid: "black",
+        bleed: "black",
+        chaotic: "black",
+        cold: "black",
+        electricity: "black",
+        evil: "black",
+        fire: "black",
+        force: "black",
+        good: "black",
+        lawful: "black",
+        mental: "black",
+        poison: "black",
+        healing: "black",
+        sonic: "black",
+        spirit: "black",
+        vitality: "black",
+        void: "black",
         "": "0xffffff",
-        precision: "0xf5bf03",
+        precision: "black",
     };
 
     const style = {
-        fill: "white",
+        fill: "black",
         fontSize: settings.fontSize,
         align: "center",
         dropShadow: true,
+        dropShadowColor: "white",
+        stroke: "white",
         strokeThickness: 5,
+        fontFamily: "Persona",
+        letterSpacing: -30,
     };
 
     const seq = new Sequence();
@@ -61,6 +66,37 @@ export async function generateDamageScroll(dmg_list, targets, msg) {
             ? game.users.filter((u) => u.isGM).map((u) => u.id)
             : getVisibleAndMsgVisibleUsers({ token: tok, whisper: msg.whisper });
 
+        Sequencer.Presets.add("tokenPop", (effect) => {
+            return effect
+                .atLocation(tok, { offset: { y: topOffset }, gridUnits: true })
+                .anchor({ x: 0.5, y: 0.5 })
+                .duration(settings.duration)
+                .scaleIn(0.5, 0.4 * settings.duration)
+                .fadeOut(0.1 * settings.duration)
+                .aboveInterface()
+                .forUsers(usersToPlayFor);
+        }, true);
+
+        Sequencer.Presets.add("popUp", (effect, level = 0) => {
+            return effect
+                .animateProperty("sprite", "position.y", {
+                    from: 0,
+                    to: (-size * (1 + level)) * settings.animScale,
+                    duration: 0.4 * settings.duration,
+                    gridUnits: true,
+                });
+        }, true);
+
+        Sequencer.Presets.add("popDown", (effect, level = 0) => {
+            return effect
+                .animateProperty("sprite", "position.y", {
+                    from: 0,
+                    to: (size * (1 + level)) * settings.animScale,
+                    duration: 0.4 * settings.duration,
+                    gridUnits: true,
+                });
+        }, true);
+
         if (usersToPlayFor.length === 1 && game.users.some((u) => u.isGM && u.id === usersToPlayFor[0])) {
             style.stroke = "rgb(0, 100, 100)";
         }
@@ -70,49 +106,81 @@ export async function generateDamageScroll(dmg_list, targets, msg) {
         if (settings.showTotal) {
             const totalDamage = dmgListFiltered.reduce((tot_dmg, curr_dmg) => tot_dmg + curr_dmg.value, 0);
             style.fontSize = settings.fontSize * getFontScale("percentMaxHealth", totalDamage, tok) * 1.1;
-            style.fill = colors[findTypeWithLargestTotal(dmg_list)] ?? "white";
+            style.fill = colors[findTypeWithLargestTotal(dmg_list)] ?? "black";
 
             seq.effect()
                 .syncGroup(`${msg.id}-total`)
-                .atLocation(tok, { offset: { y: topOffset }, gridUnits: true })
                 .text(`${totalDamage}`, style)
-                .anchor({ x: 0.5, y: 0.8 })
-                .duration(settings.duration)
-                .scaleIn(0.5, settings.duration / 3)
-                .fadeOut(settings.duration / 3)
-                .zIndex(2)
-                .forUsers(usersToPlayFor);
+                .preset("popUp")
+                .preset("tokenPop");
         }
 
-        dmgListFiltered.forEach((dmg, index) => {
-            const xMod = Math.round(Math.random()) * 2 - 1;
+        // Loop through dmg_list instead of dmgListFiltered to account for IWR indicators. Always show dmg.
+        dmg_list.forEach((dmg, index) => {
             style.fontSize = settings.fontSize * getFontScale("percentMaxHealth", dmg.value, tok);
-            style.fill = colors[dmg.type] ?? "white";
+            style.fill = colors[dmg.type] ?? "black";
 
-            seq.effect()
-                .syncGroup(`${msg.id}-breakdown-${index}`)
-                .atLocation(tok, { offset: { y: topOffset }, gridUnits: true, randomOffset: settings.jitter })
-                .text(`${dmg.value}`, style)
-                .anchor({ x: 0.5, y: 0.8 })
-                .duration(settings.duration)
-                .waitUntilFinished(settings.waitTime)
-                .scaleIn(0.5, settings.duration / 3)
-                .animateProperty("sprite", "position.x", {
-                    from: 0,
-                    to: ((size * xMod) / 2) * settings.animScale,
-                    ease: "easeOutSine",
-                    duration: settings.duration,
-                    gridUnits: true,
-                })
-                .loopProperty("sprite", "position.y", {
-                    from: 0,
-                    to: (-size / 4) * settings.animScale,
-                    duration: settings.duration / 2,
-                    gridUnits: true,
-                    pingPong: true,
-                })
-                .fadeOut(settings.duration / 3)
-                .forUsers(usersToPlayFor);
+            const attributes = msg.target.actor.attributes;
+            const iwr = getIWR(attributes, dmg.type);
+
+            if (isCrit && (index === 0)) {
+                seq.effect()
+                    .syncGroup(`${msg.id}-total`)
+                    .file("Images/Persona/Assets/Text/Critical.svg")
+                    .scale(0.75)
+                    .preset("popUp", 1)
+                    .preset("tokenPop");
+            }
+
+            if (iwr["immunity"]) {
+                seq.effect()
+                    .syncGroup(`${msg.id}-breakdown-${index}`)
+                    .file("Images/Persona/Assets/Text/Immune.svg")
+                    .scale(0.5)
+                    .waitUntilFinished(settings.waitTime)
+                    .preset("popUp")
+                    .preset("tokenPop");
+            }
+
+            else {
+                if (iwr["resistance"]) {
+                    seq.effect()
+                        .syncGroup(`${msg.id}-breakdown-${index}`)
+                        .file("Images/Persona/Assets/Text/Resist.svg")
+                        .scale(0.5)
+                        .preset("popDown", 1)
+                        .preset("tokenPop");
+                }
+
+                if (iwr["weakness"]) {
+                    seq.effect()
+                        .syncGroup(`${msg.id}-breakdown-${index}`)
+                        .file("Images/Persona/Assets/Text/Weak.svg")
+                        .scale(0.5)
+                        .preset("popUp", ((isCrit && (index === 0)) ? 2 : 1))
+                        .preset("tokenPop");
+                }
+
+                seq.effect()
+                    .syncGroup(`${msg.id}-breakdown-${index}`)
+                    .text(`${dmg.value}`, style)
+                    .waitUntilFinished(settings.waitTime)
+                    .preset("popUp")
+                    .animateProperty("sprite", "scale.x", {
+                        from: 0,
+                        to: 1,
+                        duration: 0.4 * settings.duration,
+                        gridUnits: true,
+                    })
+                    .animateProperty("sprite", "scale.y", {
+                        from: 0,
+                        to: 1,
+                        duration: 0.4 * settings.duration,
+                        gridUnits: true,
+                    })
+                    .preset("tokenPop")
+                    .zIndex(2);
+            }
         });
     }
 

@@ -179,6 +179,7 @@ function activateOnApplyDamageScroll(dat, dmg, msg) {
     if (getSetting("dmg-enabled") && getSetting("dmg-on-apply-or-roll") === "apply")
         generateDamageScroll(
             [{ type: dat.isAppliedHealing ? "healing" : "bleed", value: dat.isAppliedHealing ? -dmg : dmg }],
+            msg.flags.pf2e.context.outcome === "criticalSuccess",
             canvas.tokens.placeables.filter((tok) => tok.actor.uuid === dat.appliedDamage.uuid).map((t) => t.id),
             msg
         );
@@ -231,6 +232,7 @@ function damageRollNumbers(dat, msg) {
     if (dat.isDamageRoll && getSetting("dmg-enabled") && getSetting("dmg-on-apply-or-roll") === "roll") {
         const dmg_list = getDamageList(msg.rolls);
         const targets = getTargetList(msg);
+        const isCrit = msg.flags.pf2e.context.outcome === "criticalSuccess";
         debugLog(
             {
                 msg,
@@ -239,7 +241,7 @@ function damageRollNumbers(dat, msg) {
             },
             "Damage: "
         );
-        handleDiceSoNice(generateDamageScroll, [dmg_list, targets, msg], msg);
+        handleDiceSoNice(generateDamageScroll, [dmg_list, isCrit, targets, msg], msg);
     }
 }
 

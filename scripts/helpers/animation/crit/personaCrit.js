@@ -26,68 +26,6 @@ import { getSetting } from "../../misc.js";
  */
 
 export function personaCrit(token, users, imgData, config) {
-    const screenWidth = window.screen.availWidth;
-    const screenHeight = window.screen.availHeight;
-    const polygonPoints = [
-        [-0.1 * screenWidth, 0.55 * screenHeight],
-        [0.02 * screenWidth, 0.52 * screenHeight],
-        [0.09 * screenWidth, 0.51 * screenHeight],
-        [0.15 * screenWidth, 0.44 * screenHeight],
-        [0.23 * screenWidth, 0.4 * screenHeight],
-        [0.32 * screenWidth, 0.38 * screenHeight],
-        [0.34 * screenWidth, 0.36 * screenHeight],
-        [0.35 * screenWidth, 0.35 * screenHeight],
-        [0.41 * screenWidth, 0.28 * screenHeight],
-        [0.43 * screenWidth, 0.3 * screenHeight],
-        [0.5 * screenWidth, 0.26 * screenHeight],
-        [0.53 * screenWidth, 0.27 * screenHeight],
-        [0.58 * screenWidth, 0.26 * screenHeight],
-        [0.59 * screenWidth, 0.26 * screenHeight],
-        [0.62 * screenWidth, 0.24 * screenHeight],
-        [0.65 * screenWidth, 0.25 * screenHeight],
-        [0.71 * screenWidth, 0.23 * screenHeight],
-        [0.78 * screenWidth, 0.15 * screenHeight],
-        [0.85 * screenWidth, 0.14 * screenHeight],
-        [0.89 * screenWidth, 0.14 * screenHeight],
-        [0.95 * screenWidth, 0.11 * screenHeight],
-        [0.97 * screenWidth, 0.12 * screenHeight],
-        [1.1 * screenWidth, 0.09 * screenHeight],
-        [1.1 * screenWidth, 0.55 * screenHeight],
-        [0.97 * screenWidth, 0.53 * screenHeight],
-        [0.96 * screenWidth, 0.55 * screenHeight],
-        [0.92 * screenWidth, 0.55 * screenHeight],
-        [0.8 * screenWidth, 0.56 * screenHeight],
-        [0.72 * screenWidth, 0.57 * screenHeight],
-        [0.69 * screenWidth, 0.58 * screenHeight],
-        [0.64 * screenWidth, 0.63 * screenHeight],
-        [0.62 * screenWidth, 0.63 * screenHeight],
-        [0.61 * screenWidth, 0.65 * screenHeight],
-        [0.59 * screenWidth, 0.63 * screenHeight],
-        [0.57 * screenWidth, 0.62 * screenHeight],
-        [0.55 * screenWidth, 0.64 * screenHeight],
-        [0.53 * screenWidth, 0.65 * screenHeight],
-        [0.49 * screenWidth, 0.63 * screenHeight],
-        [0.43 * screenWidth, 0.63 * screenHeight],
-        [0.39 * screenWidth, 0.64 * screenHeight],
-        [0.37 * screenWidth, 0.65 * screenHeight],
-        [0.36 * screenWidth, 0.65 * screenHeight],
-        [0.34 * screenWidth, 0.68 * screenHeight],
-        [0.32 * screenWidth, 0.67 * screenHeight],
-        [0.29 * screenWidth, 0.72 * screenHeight],
-        [0.27 * screenWidth, 0.71 * screenHeight],
-        [0.27 * screenWidth, 0.73 * screenHeight],
-        [0.24 * screenWidth, 0.72 * screenHeight],
-        [0.22 * screenWidth, 0.73 * screenHeight],
-        [0.2 * screenWidth, 0.7 * screenHeight],
-        [0.16 * screenWidth, 0.73 * screenHeight],
-        [0.14 * screenWidth, 0.71 * screenHeight],
-        [0.13 * screenWidth, 0.72 * screenHeight],
-        [0.1 * screenWidth, 0.71 * screenHeight],
-        [0.05 * screenWidth, 0.72 * screenHeight],
-        [0.06 * screenWidth, 0.7 * screenHeight],
-        [-0.1 * screenWidth, 0.73 * screenHeight],
-    ];
-    const centeredPoints = polygonPoints.map(([x, y]) => [x - screenWidth / 2, y - screenHeight / 2]);
     const flags = token.flags?.["pf2e-rpg-numbers"];
     const [personaImg, critScale, critOffsetX, critOffsetY, critRotation] = [
         flags?.personaImg || "",
@@ -99,8 +37,6 @@ export function personaCrit(token, users, imgData, config) {
 
     const imageUrl = personaImg || imgData.img;
     const isWebm = imageUrl.endsWith(".webm");
-    const tokenScaler = ImageData.isToken ? (imgData.scaleX + imgData.yScale) / 2 : 1;
-    const imageScaler = personaImg ? 1 : tokenScaler;
     const duration = getSetting("critical.duration") * 1000;
     const soundUrl = config.sfx;
     const volumeLevel = config.volume;
@@ -113,53 +49,17 @@ export function personaCrit(token, users, imgData, config) {
         video.muted = true;
 
         video.onloadeddata = async () => {
-            const videoHeight = video.videoHeight;
-            const videoPercent = (videoHeight * imageScaler) / 100;
-
-            const scale = (critScale / 100) * imageScaler;
-            const offsetX = critOffsetX * videoPercent * scale;
-            const offsetY = (personaImg ? 0 : videoPercent * 20) + critOffsetY * videoPercent * scale;
-
             await Sequencer.Preloader.preloadForClients([imageUrl, soundUrl]);
             await new Sequence()
-                // BG Color
-                .effect()
-                .syncGroup(`p5-crit-${token.uuid}`)
-                .shape("polygon", { points: centeredPoints, fillColor: game.user.color.css, fillAlpha: 1 })
-                .screenSpace()
-                .screenSpacePosition({ x: 0, y: 0 })
-                .screenSpaceAnchor({ x: 0.5, y: 0.5 })
-                .screenSpaceAboveUI()
-                .zIndex(-1)
-                .duration(duration)
-                .forUsers(users)
-                .delay(config.delay)
                 // Video
                 .effect()
                 .syncGroup(`p5-crit-${token.uuid}`)
                 .file(imageUrl)
-                .zIndex(0)
-                .shape("polygon", { isMask: true, points: centeredPoints })
-                .spriteOffset({ x: offsetX, y: offsetY }, { gridUnits: false })
-                .spriteRotation(critRotation)
+                .zIndex(10)
                 .screenSpace()
-                .screenSpacePosition({ x: 0, y: 0 })
-                .screenSpaceAnchor({ x: 0.5, y: 0.5 })
-                .screenSpaceScale({ fitY: true, ratioX: true })
-                .scale(typeof scale === "number" ? scale : 1)
+                .screenSpaceScale({ fitX: true, ratioY: true })
                 .screenSpaceAboveUI()
-                .duration(duration)
-                .forUsers(users)
-                .delay(config.delay)
-                // Outline
-                .effect()
-                .syncGroup(`p5-crit-${token.uuid}`)
-                .zIndex(1)
-                .shape("polygon", { points: centeredPoints, fillAlpha: 0, lineSize: 10, lineColor: "white" })
-                .screenSpace()
-                .screenSpacePosition({ x: 0, y: 0 })
-                .screenSpaceAnchor({ x: 0.5, y: 0.5 })
-                .screenSpaceAboveUI()
+                .duration(3000)
                 .duration(duration)
                 .forUsers(users)
                 .delay(config.delay)
@@ -177,51 +77,15 @@ export function personaCrit(token, users, imgData, config) {
         image.src = imageUrl;
 
         image.onload = async ({ target }) => {
-            const imageHeight = target.height;
-            const imagePercent = (imageHeight * imageScaler) / 100;
-
-            const scale = (critScale / 100) * (screenHeight / imageHeight) * imageScaler;
-            const offsetX = critOffsetX * imagePercent * scale;
-            const offsetY = (personaImg ? 0 : imagePercent * 20) + critOffsetY * imagePercent * scale;
-
             await Sequencer.Preloader.preloadForClients([imageUrl, soundUrl]);
             await new Sequence()
-                // BG Color
-                .effect()
-                .syncGroup(`p5-crit-${token.uuid}`)
-                .shape("polygon", { points: centeredPoints, fillColor: game.user.color.css, fillAlpha: 1 })
-                .screenSpace()
-                .screenSpacePosition({ x: 0, y: 0 })
-                .screenSpaceAnchor({ x: 0.5, y: 0.5 })
-                .screenSpaceAboveUI()
-                .zIndex(-1)
-                .duration(duration)
-                .forUsers(users)
-                .delay(config.delay)
-                // Image
+                // Video
                 .effect()
                 .syncGroup(`p5-crit-${token.uuid}`)
                 .file(imageUrl)
-                .zIndex(0)
-                .shape("polygon", { isMask: true, points: centeredPoints })
-                .scale(typeof scale === "number" ? scale : 1)
-                .spriteOffset({ x: offsetX, y: offsetY }, { gridUnits: false })
-                .spriteRotation(critRotation)
+                .zIndex(10)
                 .screenSpace()
-                .screenSpacePosition({ x: 0, y: 0 })
-                .screenSpaceAnchor({ x: 0.5, y: 0.5 })
-                .screenSpaceAboveUI()
-                .duration(duration)
-                .forUsers(users)
-                .delay(config.delay)
-                // Outline
-                .effect()
-                .syncGroup(`p5-crit-${token.uuid}`)
-                .zIndex(1)
-                .shape("polygon", { points: centeredPoints, fillAlpha: 0, lineSize: 10, lineColor: "white" })
-                .screenSpace()
-                .screenSpacePosition({ x: 0, y: 0 })
-                .screenSpaceAnchor({ x: 0.5, y: 0.5 })
+                .screenSpaceScale({ fitX: true, ratioY: true })
                 .screenSpaceAboveUI()
                 .duration(duration)
                 .forUsers(users)
